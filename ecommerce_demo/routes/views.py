@@ -104,6 +104,32 @@ def sellers():
     return render_template("sellers.html", page="sellers", sellers=seller_list)
 
 
+@views_bp.route("/point-of-sale")
+@login_required
+def point_of_sale():
+    database = db()
+    terminals = list(database["pos_terminals"].find({}, sort=[("store_name", 1), ("register_name", 1)]))
+    receipts = list(
+        database["transactions"].find(
+            {"sales_channel": "Point of Sale"},
+            sort=[("timestamp", -1)],
+            limit=100,
+        )
+    )
+    payment_mix = {}
+    for terminal in terminals:
+        for method, count in (terminal.get("payment_mix") or {}).items():
+            payment_mix[method] = payment_mix.get(method, 0) + int(count or 0)
+    return render_template(
+        "point_of_sale.html",
+        page="point_of_sale",
+        terminals=terminals,
+        receipts=receipts,
+        payment_mix=sorted(payment_mix.items()),
+        metrics=get_business_metrics(database),
+    )
+
+
 @views_bp.route("/cashpoints")
 @login_required
 def cashpoints():

@@ -42,6 +42,24 @@ def api_transactions():
     return jsonify(collection_list(db()["transactions"], sort=[("timestamp", -1)], limit=150))
 
 
+@api_bp.get("/point-of-sale")
+@login_required
+def api_point_of_sale():
+    database = db()
+    return jsonify(
+        {
+            "terminals": collection_list(database["pos_terminals"], sort=[("store_name", 1), ("register_name", 1)]),
+            "transactions": collection_list(
+                database["transactions"],
+                query={"sales_channel": "Point of Sale"},
+                sort=[("timestamp", -1)],
+                limit=150,
+            ),
+            "metrics": get_business_metrics(database),
+        }
+    )
+
+
 @api_bp.get("/cashpoints")
 @login_required
 def api_cashpoints():

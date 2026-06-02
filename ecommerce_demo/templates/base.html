@@ -36,6 +36,10 @@
         <span>Returns</span>
         <strong>Orders</strong>
       </a>
+      <a class="header-link" href="{{ url_for('views.point_of_sale') }}">
+        <span>Store</span>
+        <strong>POS</strong>
+      </a>
       <a class="cart-link" href="{{ url_for('views.cashpoints') }}">
         <span class="cart-count">{{ business_metrics.orders_today or 0 }}</span>
         <strong>Cart</strong>
@@ -48,6 +52,7 @@
       <a href="{{ url_for('views.products') }}">Electronics</a>
       <a href="{{ url_for('views.products') }}">Fashion & Beauty</a>
       <a href="{{ url_for('views.products') }}">Home Essentials</a>
+      <a class="{{ 'active' if page == 'point_of_sale' else '' }}" href="{{ url_for('views.point_of_sale') }}">Point of Sale</a>
       <a class="{{ 'active' if page == 'sellers' else '' }}" href="{{ url_for('views.sellers') }}">Seller Hub</a>
       <a href="{{ url_for('auth.logout') }}">Logout</a>
     </nav>

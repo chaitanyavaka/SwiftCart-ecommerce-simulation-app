@@ -19,6 +19,7 @@ COLLECTIONS = [
     "sellers",
     "products",
     "transactions",
+    "pos_terminals",
     "cashpoints_ledger",
     "agent_activity_log",
     "simulation_config",
@@ -26,7 +27,7 @@ COLLECTIONS = [
 ]
 
 
-DATASET_VERSION = 8
+DATASET_VERSION = 9
 
 
 SELLERS = [
@@ -219,6 +220,17 @@ LOYALTY_TIERS = ["Bronze", "Silver", "Gold", "Platinum"]
 
 CONSENT_STATUSES = ["granted", "granted", "granted", "limited", "opted_out"]
 
+POS_TERMINALS = [
+    ("pos-001", "SwiftCart Jubilee Hills", "Hyderabad", "Register 01", "Aarav Reddy"),
+    ("pos-002", "SwiftCart Gachibowli", "Hyderabad", "Register 02", "Neha Sharma"),
+    ("pos-003", "SwiftCart Phoenix Mall", "Mumbai", "Express Counter", "Rohan Mehta"),
+    ("pos-004", "SwiftCart Koramangala", "Bengaluru", "Register 03", "Isha Nair"),
+    ("pos-005", "SwiftCart Velachery", "Chennai", "Self Checkout", "Kavya Rao"),
+    ("pos-006", "SwiftCart FC Road", "Pune", "Register 01", "Aditya Kulkarni"),
+]
+
+POS_PAYMENT_METHODS = ["UPI", "Card", "Cash", "Wallet"]
+
 CONNECTOR_FAMILIES = {
     "Beauty": "partner_catalog",
     "Electronics": "ecommerce_platform",
@@ -271,7 +283,6 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
                 "updated_at": now,
             }
         )
-
     buyers = []
     for index, name in enumerate(BUYER_NAMES, start=1):
         buyer_id = f"buy-{index:03d}"
@@ -373,15 +384,56 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
     for seller_id, count in seller_product_counts.items():
         sellers_by_id[seller_id]["product_count"] = count
 
+    terminals = []
+    for index, (terminal_id, store_name, city, register_name, cashier_name) in enumerate(POS_TERMINALS, start=1):
+        status = rng.choices(["Open", "Open", "Busy", "Offline"], weights=[5, 3, 2, 1])[0]
+        terminals.append(
+            {
+                "_id": terminal_id,
+                "terminal_id": terminal_id,
+                "store_name": store_name,
+                "city": city,
+                "register_name": register_name,
+                "cashier_name": cashier_name,
+                "status": status,
+                "queue_depth": rng.randint(0, 7 if status != "Offline" else 0),
+                "today_orders": 0,
+                "today_revenue": 0.0,
+                "total_orders": rng.randint(180, 820),
+                "total_revenue": round(rng.uniform(320000, 1450000), 2),
+                "average_ticket": 0.0,
+                "cash_drawer_balance": round(rng.uniform(18000, 72000), 2),
+                "payment_mix": {method: 0 for method in POS_PAYMENT_METHODS},
+                "risk_alerts": rng.randint(0, 2),
+                "returns_pending": rng.randint(0, 5),
+                "last_sale_at": None,
+                "decision_context": {
+                    "commercial_domain": "store_checkout",
+                    "policy_version": DECISION_POLICY_VERSION,
+                    "allowed_actions": ["create_sale", "redeem_cashpoints", "issue_receipt", "flag_receipt"],
+                    "evidence_fields": ["terminal_id", "payment_method", "queue_depth", "cash_drawer_balance"],
+                },
+                "updated_at": now,
+            }
+        )
+    for terminal in terminals:
+        terminal["average_ticket"] = round(
+            float(terminal["total_revenue"]) / max(1, int(terminal["total_orders"])),
+            2,
+        )
+
     transactions = []
     ledger_entries = []
     products_by_id = {product["product_id"]: product for product in products}
     buyers_by_id = {buyer["buyer_id"]: buyer for buyer in buyers}
+    terminals_by_id = {terminal["terminal_id"]: terminal for terminal in terminals}
 
     for index in range(1, 31):
         product = rng.choice(products)
         buyer = rng.choice(buyers)
         scenario = scenario_for_index(index)
+        is_pos_sale = index % 3 == 0
+        terminal = terminals[(index // 3 - 1) % len(terminals)] if is_pos_sale else None
         quantity = min(rng.randint(1, 3), max(1, product["stock"]))
         amount = round(product["price"] * quantity, 2)
         if scenario["key"] == "fraud_redemption_review":
@@ -397,7 +449,10 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
         if inventory_applied:
             product["stock"] = max(0, product["stock"] - quantity)
             product["sold_count"] += quantity
-        timestamp = now - timedelta(days=rng.randint(0, 7), hours=rng.randint(0, 23), minutes=rng.randint(0, 59))
+        if is_pos_sale:
+            timestamp = now - timedelta(hours=rng.randint(0, 9), minutes=rng.randint(0, 59))
+        else:
+            timestamp = now - timedelta(days=rng.randint(0, 7), hours=rng.randint(0, 23), minutes=rng.randint(0, 59))
         transaction_id = f"txn-seed-{index:03d}"
         decision_metadata = build_decision_metadata(
             source="seed",
@@ -411,6 +466,10 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
             suspicious=status == "Flagged",
             status=status,
         )
+        if is_pos_sale:
+            decision_metadata["event_type"] = "pos.checkout"
+            decision_metadata["channel"] = "store_pos"
+        payment_method = rng.choice(POS_PAYMENT_METHODS) if is_pos_sale else rng.choice(["UPI", "Card", "Net Banking", "Wallet"])
         transaction = {
             "_id": transaction_id,
             "transaction_id": transaction_id,
@@ -427,9 +486,22 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
             "inventory_applied": True,
             "inventory_quantity_applied": inventory_quantity,
             "points_applied": status == "Completed",
+            "sales_channel": "Point of Sale" if is_pos_sale else "Marketplace",
+            "payment_method": payment_method,
             "timestamp": timestamp,
             **decision_metadata,
         }
+        if terminal:
+            transaction.update(
+                {
+                    "pos_terminal_id": terminal["terminal_id"],
+                    "store_name": terminal["store_name"],
+                    "store_city": terminal["city"],
+                    "register_name": terminal["register_name"],
+                    "cashier_name": terminal["cashier_name"],
+                    "receipt_id": f"rcpt-{terminal['terminal_id']}-{index:04d}",
+                }
+            )
         transactions.append(transaction)
 
         if status in {"Completed", "Pending"}:
@@ -442,6 +514,24 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
             )
         if status == "Pending":
             sellers_by_id[product["seller_id"]]["pending_orders"] += 1
+
+        if terminal and status in {"Completed", "Pending"}:
+            pos_terminal = terminals_by_id[terminal["terminal_id"]]
+            pos_terminal["today_orders"] += 1
+            pos_terminal["today_revenue"] = round(pos_terminal["today_revenue"] + amount, 2)
+            pos_terminal["total_orders"] += 1
+            pos_terminal["total_revenue"] = round(pos_terminal["total_revenue"] + amount, 2)
+            pos_terminal["average_ticket"] = round(
+                pos_terminal["total_revenue"] / max(1, pos_terminal["total_orders"]),
+                2,
+            )
+            pos_terminal["payment_mix"][payment_method] += 1
+            if payment_method == "Cash":
+                pos_terminal["cash_drawer_balance"] = round(pos_terminal["cash_drawer_balance"] + amount, 2)
+            pos_terminal["queue_depth"] = rng.randint(0, 8)
+            pos_terminal["status"] = "Busy" if pos_terminal["queue_depth"] >= 5 else "Open"
+            pos_terminal["last_sale_at"] = timestamp
+            pos_terminal["updated_at"] = timestamp
 
         if status == "Completed":
             points = max(1, int(amount * 0.05))
@@ -514,6 +604,7 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
     db["sellers"].insert_many(sellers)
     db["buyers"].insert_many(list(buyers_by_id.values()))
     db["products"].insert_many(list(products_by_id.values()))
+    db["pos_terminals"].insert_many(list(terminals_by_id.values()))
     db["transactions"].insert_many(transactions)
     if ledger_entries:
         db["cashpoints_ledger"].insert_many(ledger_entries)
@@ -546,8 +637,9 @@ def seed_demo_data(db, max_discount_pct: int = 25) -> None:
                 "buyers": len(buyers),
                 "sellers": len(sellers),
                 "transactions": len(transactions),
+                "pos_terminals": len(terminals),
             },
-            "reason": "Marketplace collections initialized with deterministic ecommerce data.",
+            "reason": "Marketplace and point-of-sale collections initialized with deterministic ecommerce data.",
             "validation_status": "passed",
             "policy_version": DECISION_POLICY_VERSION,
             "decision_test_case": "seed_dataset",

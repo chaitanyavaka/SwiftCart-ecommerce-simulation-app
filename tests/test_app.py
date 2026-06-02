@@ -40,7 +40,9 @@ class EcommerceDemoTestCase(unittest.TestCase):
         self.assertGreaterEqual(self.db["products"].count_documents({}), 20)
         self.assertEqual(self.db["buyers"].count_documents({}), 20)
         self.assertGreaterEqual(self.db["sellers"].count_documents({}), 5)
+        self.assertGreaterEqual(self.db["pos_terminals"].count_documents({}), 5)
         self.assertGreater(self.db["transactions"].count_documents({}), 0)
+        self.assertGreater(self.db["transactions"].count_documents({"sales_channel": "Point of Sale"}), 0)
         self.assertGreater(self.db["cashpoints_ledger"].count_documents({}), 0)
 
     def test_decision_test_fixture_data_is_seeded(self):
@@ -67,6 +69,7 @@ class EcommerceDemoTestCase(unittest.TestCase):
             "/api/buyers",
             "/api/sellers",
             "/api/transactions",
+            "/api/point-of-sale",
             "/api/cashpoints",
             "/api/metrics",
             "/api/agent-activity",
@@ -75,6 +78,19 @@ class EcommerceDemoTestCase(unittest.TestCase):
                 self.assertEqual(self.client.get(endpoint).status_code, 200)
         self.assertEqual(self.client.get("/api/agents").status_code, 404)
         self.assertEqual(self.client.post("/api/agents/all/run").status_code, 404)
+
+    def test_point_of_sale_page_and_api(self):
+        self.login()
+        page_response = self.client.get("/point-of-sale")
+        self.assertEqual(page_response.status_code, 200)
+        self.assertIn(b"Point of sale", page_response.data)
+
+        api_response = self.client.get("/api/point-of-sale")
+        self.assertEqual(api_response.status_code, 200)
+        payload = api_response.get_json()
+        self.assertTrue(payload["terminals"])
+        self.assertTrue(payload["transactions"])
+        self.assertIn("pos_revenue", payload["metrics"])
 
     def test_inventory_never_goes_negative(self):
         for _ in range(30):
@@ -111,6 +127,18 @@ class EcommerceDemoTestCase(unittest.TestCase):
         self.assertTrue(generated)
         self.assertTrue(all(txn.get("decision_id") for txn in generated))
         self.assertTrue(all(txn.get("decision_context_pack") for txn in generated))
+
+    def test_point_of_sale_agent_generates_receipts(self):
+        before = self.db["transactions"].count_documents({"sales_channel": "Point of Sale"})
+        self.engine.run_cycle()
+        after = self.db["transactions"].count_documents({"sales_channel": "Point of Sale"})
+        terminal = self.db["pos_terminals"].find_one({}, sort=[("today_orders", -1)])
+        receipts = list(self.db["transactions"].find({"sales_channel": "Point of Sale"}))
+        self.assertGreater(after, before)
+        self.assertIsNotNone(terminal)
+        self.assertGreaterEqual(terminal["today_orders"], 0)
+        self.assertTrue(all(receipt.get("pos_terminal_id") for receipt in receipts))
+        self.assertTrue(all(receipt.get("receipt_id") for receipt in receipts))
 
     def test_agent_actions_are_logged(self):
         before = self.db["agent_activity_log"].count_documents({})

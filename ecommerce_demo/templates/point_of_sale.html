@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Point of Sale | SwiftCart{% endblock %}
+{% block heading %}Point of Sale{% endblock %}
+
+{% block content %}
+<section class="listing-hero pos-hero">
+  <div>
+    <span class="tiny-label">Store checkout</span>
+    <h1>Point of sale</h1>
+    <p>Track live store registers, in-store receipts, payment mix and queue pressure alongside online marketplace orders.</p>
+  </div>
+  <div class="pos-hero-stats">
+    <div>
+      <span>POS revenue</span>
+      <strong>{{ metrics.pos_revenue|money }}</strong>
+    </div>
+    <div>
+      <span>POS orders today</span>
+      <strong>{{ metrics.pos_orders_today|number }}</strong>
+    </div>
+    <div>
+      <span>Open registers</span>
+      <strong>{{ metrics.pos_active_terminals|number }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="pos-summary-grid" aria-label="Point of sale metrics">
+  <article class="metric-card">
+    <span>Store revenue</span>
+    <strong data-metric="pos_revenue">{{ metrics.pos_revenue|money }}</strong>
+  </article>
+  <article class="metric-card">
+    <span>Store orders</span>
+    <strong data-metric="pos_orders_today">{{ metrics.pos_orders_today|number }}</strong>
+  </article>
+  <article class="metric-card warning">
+    <span>Queue depth</span>
+    <strong data-metric="pos_queue_depth">{{ metrics.pos_queue_depth|number }}</strong>
+  </article>
+  <article class="metric-card">
+    <span>Active registers</span>
+    <strong data-metric="pos_active_terminals">{{ metrics.pos_active_terminals|number }}</strong>
+  </article>
+</section>
+
+<section class="market-grid">
+  <article class="store-section span-2">
+    <div class="section-heading">
+      <div>
+        <span class="tiny-label">Register network</span>
+        <h2>Store terminals</h2>
+      </div>
+    </div>
+    <div class="terminal-grid">
+      {% for terminal in terminals %}
+      <article class="terminal-card">
+        <div class="terminal-card-head">
+          <div>
+            <strong>{{ terminal.store_name }}</strong>
+            <span>{{ terminal.register_name }} | {{ terminal.city }}</span>
+          </div>
+          <em class="badge {{ terminal.status|lower }}">{{ terminal.status }}</em>
+        </div>
+        <div class="terminal-kpis">
+          <div>
+            <span>Today</span>
+            <strong>{{ terminal.today_revenue|money }}</strong>
+          </div>
+          <div>
+            <span>Orders</span>
+            <strong>{{ terminal.today_orders|number }}</strong>
+          </div>
+          <div>
+            <span>Queue</span>
+            <strong>{{ terminal.queue_depth|number }}</strong>
+          </div>
+        </div>
+        <div class="terminal-meta">
+          <span>Cashier</span>
+          <strong>{{ terminal.cashier_name }}</strong>
+          <span>Last sale</span>
+          <strong>{{ terminal.last_sale_at|datetime }}</strong>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="store-section">
+    <div class="section-heading">
+      <div>
+        <span class="tiny-label">Tender mix</span>
+        <h2>Payments</h2>
+      </div>
+    </div>
+    <div class="payment-mix">
+      {% for method, count in payment_mix %}
+      <div>
+        <span>{{ method }}</span>
+        <strong>{{ count|number }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="store-section span-2">
+    <div class="section-heading">
+      <div>
+        <span class="tiny-label">Receipt stream</span>
+        <h2>Recent POS receipts</h2>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Receipt</th>
+            <th>Store</th>
+            <th>Buyer</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Amount</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for receipt in receipts %}
+          <tr>
+            <td><code>{{ receipt.receipt_id }}</code></td>
+            <td>
+              <strong>{{ receipt.store_name }}</strong>
+              <small>{{ receipt.register_name }}</small>
+            </td>
+            <td>{{ receipt.buyer_name }}</td>
+            <td>{{ receipt.product_name }}</td>
+            <td>{{ receipt.quantity }}</td>
+            <td>{{ receipt.amount|money }}</td>
+            <td>{{ receipt.payment_method }}</td>
+            <td><span class="badge {{ 'flagged' if receipt.suspicious else receipt.status|lower|replace(' ', '-') }}">{{ receipt.status }}</span></td>
+            <td>{{ receipt.timestamp|datetime }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

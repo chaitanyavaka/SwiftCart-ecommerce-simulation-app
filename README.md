@@ -6,9 +6,9 @@ A standalone Flask + MongoDB ecommerce simulation with a customer-facing marketp
 
 - Admin login/logout
 - Amazon/Flipkart-style marketplace header, search bar, category nav, hero sale area and product cards
-- Products, buyers, sellers, cashpoints, transactions and agent activity pages
+- Products, buyers, sellers, point of sale, cashpoints, transactions and agent activity pages
 - Real product-style image URLs for seeded products
-- Background agents for buyer activity, inventory, sellers, cashpoints, promotions, anomaly detection and metrics
+- Background agents for buyer activity, point of sale, inventory, sellers, cashpoints, promotions, anomaly detection and metrics
 - Fixed 5-minute agent refresh cadence
 - MongoDB persistence through `MONGO_URI`
 - Optional Groq explanations through `GROQ_API_KEY`
@@ -73,6 +73,7 @@ The storefront does not show manual automation controls. Agents auto-start when 
 - `GET /api/buyers`
 - `GET /api/sellers`
 - `GET /api/transactions`
+- `GET /api/point-of-sale`
 - `GET /api/cashpoints`
 - `GET /api/metrics`
 - `GET /api/agent-activity`
@@ -88,11 +89,12 @@ Admin API endpoints require login.
 SwiftCart stays visually ecommerce, but the records returned by the existing endpoints include commerce decision test artifacts:
 
 - transactions include `decision_id`, `request_id`, `idempotency_key`, `policy_checks`, `decision_context_pack`, `action_graph`, `execution_receipt`, approval status, autonomy level, rollback flags, fraud signals, experiment holdout data and expected margin impact
+- point-of-sale receipts include terminal ID, store, register, cashier, receipt ID, payment method and store checkout channel metadata
 - products include margin floors, promotion budgets, offer eligibility, inventory policy status and pricing policy decisions
 - buyers include consent status, loyalty tier, churn risk, household/device identity and customer value context
 - sellers include connector IDs, connector family, health, latency, retry depth and rollback support
 - cashpoints ledger entries include wallet policy results, liability owner, redemption velocity and linked decision metadata
-- metrics include covered decision test cases, policy blocks, approval queue count, connector retries and decision audit record count
+- metrics include covered decision test cases, policy blocks, approval queue count, connector retries, decision audit record count and POS revenue/order/register metrics
 
 The seeded transaction set covers the current decision scenarios: loyalty reward allowed, fraud redemption review, margin floor block, consent personalization block, inventory low-stock block, high-value approval required, connector retry, holdout experiment, rollback-ready execution and deterministic fallback.
 
@@ -102,4 +104,4 @@ The seeded transaction set covers the current decision scenarios: loyalty reward
 python -m unittest discover
 ```
 
-The tests cover app startup, seed data, decision fixture coverage, unchanged API surface, inventory and cashpoints safety, discount limits, transaction generation, agent logging, and reset behavior.
+The tests cover app startup, seed data, decision fixture coverage, API surface, point-of-sale data, inventory and cashpoints safety, discount limits, transaction generation, agent logging, and reset behavior.

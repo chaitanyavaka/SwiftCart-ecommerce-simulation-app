@@ -20,6 +20,8 @@ def calculate_business_metrics(db) -> dict:
     buyers = list(db["buyers"].find({}))
     products = list(db["products"].find({}))
     ledger = list(db["cashpoints_ledger"].find({}))
+    terminals = list(db["pos_terminals"].find({}))
+    pos_transactions = [txn for txn in transactions if txn.get("sales_channel") == "Point of Sale"]
 
     completed_revenue = sum(
         float(txn.get("amount", 0))
@@ -70,6 +72,18 @@ def calculate_business_metrics(db) -> dict:
         for txn in transactions
         if (txn.get("execution_receipt") or {}).get("status") == "Retrying"
     )
+    pos_revenue = sum(
+        float(txn.get("amount", 0))
+        for txn in pos_transactions
+        if txn.get("status") in {"Completed", "Pending"}
+    )
+    pos_orders_today = sum(
+        1
+        for txn in pos_transactions
+        if _as_utc(txn.get("timestamp")) and _as_utc(txn.get("timestamp")).date() == today
+    )
+    pos_active_terminals = sum(1 for terminal in terminals if terminal.get("status") != "Offline")
+    pos_queue_depth = sum(int(terminal.get("queue_depth", 0)) for terminal in terminals)
 
     return {
         "_id": "current",
@@ -86,6 +100,10 @@ def calculate_business_metrics(db) -> dict:
         "approval_queue": approval_queue,
         "connector_retries": connector_retries,
         "decision_audit_records": sum(1 for txn in transactions if txn.get("decision_context_pack")),
+        "pos_revenue": round(pos_revenue, 2),
+        "pos_orders_today": pos_orders_today,
+        "pos_active_terminals": pos_active_terminals,
+        "pos_queue_depth": pos_queue_depth,
         "updated_at": now,
     }
 

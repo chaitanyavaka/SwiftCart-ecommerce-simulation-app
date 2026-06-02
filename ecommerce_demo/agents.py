@@ -36,6 +36,15 @@ FRAUD_TRANSACTIONS_PER_CYCLE = (1, 3)
 SUSPICIOUS_REDEMPTIONS_PER_CYCLE = (1, 2)
 CATALOG_LAUNCHES_PER_CYCLE = (1, 2)
 CATALOG_LAUNCH_PROBABILITY = 0.9
+POS_SALES_PER_CYCLE = (6, 10)
+POS_PAYMENT_METHODS = ["UPI", "Card", "Cash", "Wallet"]
+POS_DECISION_SCENARIOS = [
+    "loyalty_reward_allowed",
+    "loyalty_reward_allowed",
+    "connector_retry",
+    "rollback_available",
+    "deterministic_fallback",
+]
 
 CATALOG_LAUNCH_TERMS = {
     "Beauty": ["Glow", "Hydra", "Silk", "Bloom", "Dew"],
@@ -171,6 +180,7 @@ class SimulationEngine:
     def run_cycle(self) -> None:
         with self._lock:
             self._buyer_activity_agent()
+            self._point_of_sale_agent()
             self._inventory_agent()
             self._seller_agent()
             self._cashpoints_agent()
@@ -358,6 +368,154 @@ class SimulationEngine:
                     },
                     {"product": product["name"], "buyer": buyer["segment"]},
                 )
+
+    def _point_of_sale_agent(self) -> None:
+        agent = "Point of Sale Agent"
+        terminals = list(self.db["pos_terminals"].find({"status": {"$ne": "Offline"}}))
+        if not terminals:
+            terminals = list(self.db["pos_terminals"].find({}))
+        products = list(self.db["products"].find({"seller_status": "Active", "stock": {"$gt": 0}}))
+        buyers = list(self.db["buyers"].find({}))
+        if not terminals or not products or not buyers:
+            return
+
+        for _ in range(self.random.randint(*POS_SALES_PER_CYCLE)):
+            terminal = self.random.choice(terminals)
+            product = self.random.choice(products)
+            buyer = self.random.choice(buyers)
+            fresh_product = self.db["products"].find_one({"_id": product["_id"]})
+            if not fresh_product or int(fresh_product.get("stock", 0)) <= 0:
+                self._log_action(
+                    agent,
+                    "pos_checkout",
+                    "products",
+                    product["_id"],
+                    {"stock": product.get("stock", 0)},
+                    {"receipt_created": False},
+                    {"blocked": "out_of_stock", "terminal": terminal.get("terminal_id")},
+                    validation_status="skipped",
+                )
+                continue
+
+            now = utcnow()
+            quantity = min(self.random.randint(1, 3), int(fresh_product.get("stock", 1)))
+            amount = round(float(fresh_product.get("price", 1)) * quantity, 2)
+            transaction_id = f"txn-pos-{uuid.uuid4().hex[:10]}"
+            receipt_id = f"rcpt-{terminal.get('terminal_id', 'pos')}-{uuid.uuid4().hex[:8]}"
+            payment_method = self.random.choice(POS_PAYMENT_METHODS)
+            scenario_key = self.random.choice(POS_DECISION_SCENARIOS)
+            status = "Pending" if scenario_key == "connector_retry" else self.random.choices(["Completed", "Pending"], weights=[94, 6])[0]
+            decision_metadata = build_decision_metadata(
+                source="agent-pos-sale",
+                sequence=transaction_id,
+                buyer=buyer,
+                product=fresh_product,
+                amount=amount,
+                quantity=quantity,
+                timestamp=now,
+                scenario_key=scenario_key,
+                suspicious=False,
+                status=status,
+            )
+            decision_metadata["event_type"] = "pos.checkout"
+            decision_metadata["channel"] = "store_pos"
+            transaction = {
+                "_id": transaction_id,
+                "transaction_id": transaction_id,
+                "buyer_id": buyer["buyer_id"],
+                "buyer_name": buyer["name"],
+                "seller_id": fresh_product["seller_id"],
+                "product_id": fresh_product["product_id"],
+                "product_name": fresh_product["name"],
+                "quantity": quantity,
+                "amount": amount,
+                "status": status,
+                "suspicious": False,
+                "risk_score": buyer.get("risk_score", 0.1),
+                "inventory_applied": False,
+                "inventory_quantity_applied": 0,
+                "points_applied": False,
+                "sales_channel": "Point of Sale",
+                "payment_method": payment_method,
+                "pos_terminal_id": terminal["terminal_id"],
+                "store_name": terminal["store_name"],
+                "store_city": terminal.get("city"),
+                "register_name": terminal.get("register_name"),
+                "cashier_name": terminal.get("cashier_name"),
+                "receipt_id": receipt_id,
+                "timestamp": now,
+                **decision_metadata,
+            }
+            self.db["transactions"].insert_one(transaction)
+
+            buyer_update = {"$set": {"last_active": now, "status": "Active"}}
+            if status in {"Completed", "Pending"}:
+                buyer_update["$inc"] = {"orders_count": 1, "lifetime_value": amount}
+            self.db["buyers"].update_one({"_id": buyer["_id"]}, buyer_update)
+
+            seller_update = {"$set": {"updated_at": now}}
+            if status in {"Completed", "Pending"}:
+                seller_update["$inc"] = {"revenue": amount}
+                if status == "Pending":
+                    seller_update["$inc"]["pending_orders"] = 1
+            self.db["sellers"].update_one({"_id": fresh_product["seller_id"]}, seller_update)
+
+            old_queue = max(0, int(terminal.get("queue_depth", 0)))
+            new_queue = max(0, old_queue + self.random.choice([-2, -1, 0, 1, 2]))
+            previous_orders = max(0, int(terminal.get("total_orders", 0)))
+            previous_revenue = max(0.0, float(terminal.get("total_revenue", 0)))
+            next_total_orders = previous_orders + 1
+            next_total_revenue = round(previous_revenue + amount, 2)
+            terminal_update = {
+                "$inc": {
+                    "today_orders": 1,
+                    "today_revenue": amount,
+                    "total_orders": 1,
+                    "total_revenue": amount,
+                    f"payment_mix.{payment_method}": 1,
+                },
+                "$set": {
+                    "status": "Busy" if new_queue >= 5 else "Open",
+                    "queue_depth": new_queue,
+                    "average_ticket": round(next_total_revenue / max(1, next_total_orders), 2),
+                    "last_sale_at": now,
+                    "updated_at": now,
+                },
+            }
+            if payment_method == "Cash":
+                terminal_update["$inc"]["cash_drawer_balance"] = amount
+            self.db["pos_terminals"].update_one({"_id": terminal["_id"]}, terminal_update)
+            terminal["queue_depth"] = new_queue
+            terminal["status"] = "Busy" if new_queue >= 5 else "Open"
+            terminal["today_orders"] = int(terminal.get("today_orders", 0)) + 1
+            terminal["today_revenue"] = round(float(terminal.get("today_revenue", 0)) + amount, 2)
+            terminal["total_orders"] = next_total_orders
+            terminal["total_revenue"] = next_total_revenue
+
+            self._log_action(
+                agent,
+                "pos_checkout",
+                "transactions",
+                transaction_id,
+                {"terminal": terminal["terminal_id"], "queue_depth": old_queue},
+                {
+                    "amount": amount,
+                    "quantity": quantity,
+                    "status": status,
+                    "payment_method": payment_method,
+                    "queue_depth": new_queue,
+                },
+                {
+                    "terminal": terminal["terminal_id"],
+                    "store": terminal["store_name"],
+                    "receipt": receipt_id,
+                    "product": fresh_product["name"],
+                    "decision_id": decision_metadata["decision_id"],
+                    "decision_test_case": decision_metadata["decision_test_case"],
+                    "autonomy_level": decision_metadata["autonomy_level"],
+                    "policy_version": decision_metadata["policy_version"],
+                },
+            )
 
     def _inventory_agent(self) -> None:
         agent = "Inventory Agent"
@@ -931,11 +1089,13 @@ class SimulationEngine:
                 "total_revenue": old.get("total_revenue"),
                 "orders_today": old.get("orders_today"),
                 "suspicious_transactions": old.get("suspicious_transactions"),
+                "pos_orders_today": old.get("pos_orders_today"),
             },
             {
                 "total_revenue": new.get("total_revenue"),
                 "orders_today": new.get("orders_today"),
                 "suspicious_transactions": new.get("suspicious_transactions"),
+                "pos_orders_today": new.get("pos_orders_today"),
             },
             {"source": "collections"},
         )

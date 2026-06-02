@@ -60,7 +60,7 @@ select {
 
 .market-header-main {
   display: grid;
-  grid-template-columns: auto auto minmax(260px, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(260px, 1fr) auto auto auto auto;
   align-items: center;
   gap: 14px;
   padding: 12px 24px;
@@ -578,7 +578,7 @@ select {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
@@ -724,6 +724,129 @@ select {
 input {
   width: 100%;
   padding: 0 12px;
+}
+
+.pos-hero {
+  align-items: center;
+  background:
+    linear-gradient(105deg, rgba(17, 24, 39, 0.88), rgba(32, 43, 61, 0.58)),
+    url("https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=1600&q=80") center/cover;
+  color: #ffffff;
+}
+
+.pos-hero h1,
+.pos-hero p {
+  color: #ffffff;
+}
+
+.pos-hero-stats,
+.pos-summary-grid,
+.terminal-grid,
+.terminal-kpis,
+.payment-mix {
+  display: grid;
+  gap: 12px;
+}
+
+.pos-hero-stats {
+  grid-template-columns: repeat(3, minmax(128px, 1fr));
+  min-width: min(580px, 100%);
+}
+
+.pos-hero-stats div {
+  min-height: 106px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.pos-hero-stats span,
+.terminal-card span,
+.terminal-meta span,
+.payment-mix span {
+  color: var(--muted);
+}
+
+.pos-hero-stats span {
+  color: #d5deeb;
+}
+
+.pos-hero-stats strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+}
+
+.pos-summary-grid {
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  margin: 16px 0;
+}
+
+.terminal-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.terminal-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.terminal-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.terminal-card-head strong,
+.terminal-card-head span {
+  display: block;
+}
+
+.terminal-card-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.terminal-kpis {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.terminal-kpis div,
+.payment-mix div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f4f7fb;
+}
+
+.terminal-kpis strong,
+.payment-mix strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.terminal-meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.terminal-meta strong {
+  min-width: 0;
+}
+
+.payment-mix {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .product-grid {
@@ -948,7 +1071,7 @@ code {
 
 @media (max-width: 1180px) {
   .market-header-main {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   }
 
   .location-button,
@@ -963,6 +1086,11 @@ code {
 
   .category-tiles {
     grid-template-columns: repeat(4, minmax(130px, 1fr));
+  }
+
+  .pos-summary-grid,
+  .pos-hero-stats {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
 
   .store-hero {
@@ -1027,6 +1155,11 @@ code {
     min-width: 0;
   }
 
+  .pos-hero-stats,
+  .pos-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .login-screen {
     grid-template-columns: 1fr;
     justify-content: stretch;
@@ -1037,7 +1170,10 @@ code {
 @media (max-width: 520px) {
   .deal-grid,
   .metric-grid,
-  .category-tiles {
+  .category-tiles,
+  .pos-hero-stats,
+  .pos-summary-grid,
+  .payment-mix {
     grid-template-columns: 1fr;
   }
 

@@ -70,7 +70,7 @@
       Object.entries(metrics).forEach(([key, value]) => {
         const node = document.querySelector(`[data-metric="${key}"]`);
         if (!node) return;
-        node.textContent = key === "total_revenue" ? money(value) : number(value);
+        node.textContent = key === "total_revenue" || key === "pos_revenue" ? money(value) : number(value);
       });
     } catch (error) {
       // Keep the dashboard calm if the user is logged out in another tab.
