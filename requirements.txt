@@ -1,4 +1,6 @@
-Flask>=3.0
-pymongo>=4.6
-groq>=0.9
-pytest>=8.0
+Flask
+pymongo
+groq
+pytest
+certifi
+gunicorn
