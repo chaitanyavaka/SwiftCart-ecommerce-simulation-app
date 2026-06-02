@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}SwiftCart | Online Shopping{% endblock %}
+{% block heading %}SwiftCart{% endblock %}
+
+{% block content %}
+<section class="store-hero">
+  <div class="hero-copy">
+    <span class="sale-kicker">Mega Store Weekend</span>
+    <h1>Fresh deals, fast delivery, smarter shopping.</h1>
+    <p>Top electronics, home essentials, beauty picks and pantry favorites refreshed by live marketplace agents.</p>
+    <div class="hero-actions">
+      <a class="button primary" href="{{ url_for('views.products') }}">Shop deals</a>
+      <a class="button light" href="{{ url_for('views.transactions') }}">Track orders</a>
+    </div>
+  </div>
+  <div class="hero-image-stack">
+    {% for product in top_products[:3] %}
+    <img src="{{ product.image_url }}" alt="{{ product.name }}">
+    {% endfor %}
+  </div>
+</section>
+
+<section class="category-tiles" aria-label="Shop by category">
+  {% for item in category_counts %}
+  <a href="{{ url_for('views.products') }}" data-category-tile data-category="{{ item.category }}">
+    <span>{{ item.category }}</span>
+    <strong><b data-category-count>{{ item.count|number }}</b> <em data-category-label>{{ item.label }}</em></strong>
+    <small data-category-products><b data-category-secondary>{{ item.secondary_count|number }}</b> {{ item.secondary_label }}</small>
+  </a>
+  {% endfor %}
+</section>
+
+<section class="market-grid">
+  <article class="store-section span-2">
+    <div class="section-heading">
+      <div>
+        <span class="tiny-label">Handpicked offers</span>
+        <h2>Deals inspired by today&apos;s shoppers</h2>
+      </div>
+      <a href="{{ url_for('views.products') }}">See all</a>
+    </div>
+    <div class="deal-grid">
+      {% for product in top_products[:8] %}
+      <a class="deal-card" href="{{ url_for('views.products') }}">
+        <img src="{{ product.image_url }}" alt="{{ product.name }}">
+        <div>
+          <span class="product-brand">{{ product.brand or product.category }}</span>
+          <h3>{{ product.name }}</h3>
+          <div class="rating-row">Rating {{ product.rating }} <span>({{ product.review_count|number }})</span></div>
+          <div class="price-line">
+            <strong>{{ product.price|money }}</strong>
+            {% if product.discount_pct %}
+            <span>{{ product.discount_pct }}% off</span>
+            {% endif %}
+          </div>
+          <small>{{ product.delivery_badge or "Free delivery by tomorrow" }}</small>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="store-section pulse-section">
+    <div class="section-heading">
+      <div>
+        <span class="tiny-label">Marketplace pulse</span>
+        <h2>Today&apos;s live numbers</h2>
+      </div>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <span>Revenue</span>
+        <strong data-metric="total_revenue">{{ metrics.total_revenue|money }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>Orders</span>
+        <strong data-metric="orders_today">{{ metrics.orders_today|number }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>Active buyers</span>
+        <strong data-metric="active_buyers">{{ metrics.active_buyers|number }}</strong>
+      </div>
+      <div class="metric-card warning">
+        <span>Low stock</span>
+        <strong data-metric="low_stock_products">{{ metrics.low_stock_products|number }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>Cashpoints</span>
+        <strong data-metric="total_cashpoints_issued">{{ metrics.total_cashpoints_issued|number }}</strong>
+      </div>
+      <div class="metric-card danger">
+        <span>Flagged</span>
+        <strong data-metric="suspicious_transactions">{{ metrics.suspicious_transactions|number }}</strong>
+      </div>
+    </div>
+  </article>
+
+  <article class="store-section">
+    <div class="section-heading">
+      <div>
+        <span class="tiny-label">Recently ordered</span>
+        <h2>Order stream</h2>
+      </div>
+      <a href="{{ url_for('views.transactions') }}">View</a>
+    </div>
+    <div class="order-feed">
+      {% for txn in recent_transactions[:6] %}
+      <div>
+        <strong>{{ txn.product_name }}</strong>
+        <span>{{ txn.buyer_name }} | {{ txn.amount|money }}</span>
+        <em class="badge {{ txn.status|lower|replace(' ', '-') }}">{{ txn.status }}</em>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+</section>
+{% endblock %}

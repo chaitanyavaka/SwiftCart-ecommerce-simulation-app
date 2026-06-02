@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Cashpoints | SwiftCart{% endblock %}
+{% block heading %}Cashpoints / Loyalty{% endblock %}
+
+{% block content %}
+<section class="dashboard-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <span class="tiny-label">Top balances</span>
+        <h2>Buyer Cashpoints</h2>
+      </div>
+    </div>
+    <div class="compact-list">
+      {% for buyer in top_balances %}
+      <div>
+        <span>{{ buyer.name }}</span>
+        <strong>{{ buyer.cashpoints_balance|number }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel span-2">
+    <div class="panel-header">
+      <div>
+        <span class="tiny-label">Ledger</span>
+        <h2>Cashpoints Activity</h2>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Buyer</th>
+            <th>Type</th>
+            <th>Points</th>
+            <th>Balance</th>
+            <th>Reason</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in ledger %}
+          <tr>
+            <td>{{ entry.buyer_name }}</td>
+            <td><span class="badge {{ 'flagged' if entry.suspicious else entry.entry_type|lower|replace(' ', '-') }}">{{ entry.entry_type }}</span></td>
+            <td class="{{ 'negative' if entry.points < 0 else 'positive' }}">{{ entry.points }}</td>
+            <td>{{ entry.balance_after|number }}</td>
+            <td>{{ entry.reason }}</td>
+            <td>{{ entry.timestamp|datetime }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

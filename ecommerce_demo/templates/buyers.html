@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Buyers | SwiftCart{% endblock %}
+{% block heading %}Buyers{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <span class="tiny-label">Customer operations</span>
+      <h2>Buyer Directory</h2>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Segment</th>
+          <th>Status</th>
+          <th>Cashpoints</th>
+          <th>Risk</th>
+          <th>LTV</th>
+          <th>Orders</th>
+          <th>Last active</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for buyer in buyers %}
+        <tr>
+          <td>
+            <strong>{{ buyer.name }}</strong>
+            <small>{{ buyer.email }}</small>
+          </td>
+          <td>{{ buyer.segment }}</td>
+          <td><span class="badge {{ buyer.status|lower }}">{{ buyer.status }}</span></td>
+          <td>{{ buyer.cashpoints_balance|number }}</td>
+          <td>
+            <span class="risk-meter"><i style="width: {{ (buyer.risk_score * 100)|round|int }}%"></i></span>
+            {{ (buyer.risk_score * 100)|round|int }}%
+          </td>
+          <td>{{ buyer.lifetime_value|money }}</td>
+          <td>{{ buyer.orders_count }}</td>
+          <td>{{ buyer.last_active|datetime }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

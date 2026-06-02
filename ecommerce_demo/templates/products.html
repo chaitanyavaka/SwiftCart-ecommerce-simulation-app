@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}All Products | SwiftCart{% endblock %}
+{% block heading %}Products{% endblock %}
+
+{% block content %}
+<section class="listing-hero">
+  <div>
+    <span class="tiny-label">SwiftCart marketplace</span>
+    <h1>All products</h1>
+    <p>Browse live inventory, current offers, ratings and seller-backed delivery promises.</p>
+  </div>
+  <div class="listing-search">
+    <input placeholder="Search within products" aria-label="Search within products">
+    <button class="button primary" type="button">Search</button>
+  </div>
+</section>
+
+<section class="product-grid marketplace-products">
+  {% for product in products %}
+  <article class="product-card">
+    <a href="#"><img src="{{ product.image_url }}" alt="{{ product.name }}"></a>
+    <div class="product-body">
+      <div class="product-meta">
+        <span>{{ product.brand or product.category }}</span>
+        <span class="badge {{ 'low' if product.status == 'Low Stock' else 'active' }}">{{ product.status }}</span>
+      </div>
+      <h2>{{ product.name }}</h2>
+      <div class="rating-row">Rating {{ product.rating }} <span>({{ product.review_count|number }} ratings)</span></div>
+      <div class="price-row">
+        <strong>{{ product.price|money }}</strong>
+        {% if product.discount_pct %}
+        <span>{{ product.discount_pct }}% off</span>
+        {% endif %}
+      </div>
+      <div class="product-stats">
+        <span><strong>{{ product.stock }}</strong> stock</span>
+        <span><strong>{{ product.sold_count }}</strong> sold</span>
+        <span><strong>{{ product.views_count }}</strong> views</span>
+      </div>
+      {% if product.promotion %}
+      <p class="promotion">{{ product.promotion }}</p>
+      {% endif %}
+      <div class="buy-row">
+        <button class="button buy-now" type="button">Buy now</button>
+        <button class="button light" type="button">Add to cart</button>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

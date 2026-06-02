@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Sellers | SwiftCart{% endblock %}
+{% block heading %}Sellers{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <span class="tiny-label">Marketplace health</span>
+      <h2>Seller Performance</h2>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Seller</th>
+          <th>Focus</th>
+          <th>Status</th>
+          <th>Fulfillment</th>
+          <th>Rating</th>
+          <th>Revenue</th>
+          <th>Products</th>
+          <th>Pending</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for seller in sellers %}
+        <tr>
+          <td><strong>{{ seller.name }}</strong></td>
+          <td>{{ seller.category_focus }}</td>
+          <td><span class="badge {{ 'active' if seller.active else 'inactive' }}">{{ 'Active' if seller.active else 'Inactive' }}</span></td>
+          <td><span class="badge {{ seller.fulfillment_status|lower|replace(' ', '-') }}">{{ seller.fulfillment_status }}</span></td>
+          <td>{{ seller.rating }}</td>
+          <td>{{ seller.revenue|money }}</td>
+          <td>{{ seller.product_count }}</td>
+          <td>{{ seller.pending_orders }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

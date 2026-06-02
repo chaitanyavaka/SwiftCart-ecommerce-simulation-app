@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SwiftCart{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <header class="market-header">
+    <div class="market-header-main">
+      <a class="market-logo" href="{{ url_for('views.dashboard') }}" aria-label="SwiftCart home">
+        <span class="logo-smile"></span>
+        <strong>SwiftCart</strong>
+      </a>
+      <button class="location-button" type="button">
+        <span>Deliver to</span>
+        <strong>Hyderabad 500001</strong>
+      </button>
+      <form class="search-bar" role="search">
+        <select aria-label="Search category">
+          <option>All</option>
+          <option>Electronics</option>
+          <option>Home</option>
+          <option>Beauty</option>
+          <option>Grocery</option>
+        </select>
+        <input aria-label="Search products" placeholder="Search for products, brands and more">
+        <button type="submit">Search</button>
+      </form>
+      <a class="header-link" href="{{ url_for('views.buyers') }}">
+        <span>Hello, {{ session.get("admin_username", "admin") }}</span>
+        <strong>Account</strong>
+      </a>
+      <a class="header-link" href="{{ url_for('views.transactions') }}">
+        <span>Returns</span>
+        <strong>Orders</strong>
+      </a>
+      <a class="cart-link" href="{{ url_for('views.cashpoints') }}">
+        <span class="cart-count">{{ business_metrics.orders_today or 0 }}</span>
+        <strong>Cart</strong>
+      </a>
+    </div>
+    <nav class="category-nav" aria-label="Marketplace navigation">
+      <a class="{{ 'active' if page == 'dashboard' else '' }}" href="{{ url_for('views.dashboard') }}">Home</a>
+      <a class="{{ 'active' if page == 'products' else '' }}" href="{{ url_for('views.products') }}">All Products</a>
+      <a href="{{ url_for('views.products') }}">Today's Deals</a>
+      <a href="{{ url_for('views.products') }}">Electronics</a>
+      <a href="{{ url_for('views.products') }}">Fashion & Beauty</a>
+      <a href="{{ url_for('views.products') }}">Home Essentials</a>
+      <a class="{{ 'active' if page == 'sellers' else '' }}" href="{{ url_for('views.sellers') }}">Seller Hub</a>
+      <a href="{{ url_for('auth.logout') }}">Logout</a>
+    </nav>
+  </header>
+
+  <main class="market-main">
+    {% block content %}{% endblock %}
+  </main>
+  <div class="toast" data-toast hidden></div>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

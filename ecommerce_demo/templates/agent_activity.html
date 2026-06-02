@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Activity | SwiftCart{% endblock %}
+{% block heading %}Agent Activity Log{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <span class="tiny-label">Simulation audit trail</span>
+      <h2>Agent Activity</h2>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Action</th>
+          <th>Collection</th>
+          <th>Validation</th>
+          <th>Reason</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td><strong>{{ log.agent_name }}</strong></td>
+          <td>{{ log.action_type|replace('_', ' ')|title }}</td>
+          <td>
+            {{ log.affected_collection }}
+            <small>{{ log.affected_id }}</small>
+          </td>
+          <td><span class="badge {{ log.validation_status }}">{{ log.validation_status }}</span></td>
+          <td>{{ log.reason }}</td>
+          <td>{{ log.timestamp|datetime }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

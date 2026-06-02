@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions | SwiftCart{% endblock %}
+{% block heading %}Transactions{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <span class="tiny-label">Order stream</span>
+      <h2>Transactions</h2>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Buyer</th>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Risk</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in transactions %}
+        <tr>
+          <td><code>{{ txn.transaction_id }}</code></td>
+          <td>{{ txn.buyer_name }}</td>
+          <td>{{ txn.product_name }}</td>
+          <td>{{ txn.quantity }}</td>
+          <td>{{ txn.amount|money }}</td>
+          <td><span class="badge {{ 'flagged' if txn.suspicious else txn.status|lower|replace(' ', '-') }}">{{ txn.status }}</span></td>
+          <td>{{ (txn.risk_score * 100)|round|int }}%</td>
+          <td>{{ txn.timestamp|datetime }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
